@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Curvas de Bézier</title>
+
+<link rel="stylesheet" type="text/css" href="estilos.css">
+<script src="mapeamento.js"></script>
+<script src="formasvetoriais.js"></script>
+
+<script>
+
+// ------------------------------
+// INICIALIZAÇÃO (main)
+// ------------------------------
+function iniciar() {
+	//pegar os elementos da interface que serão manipulados constantemente
+	elementTelaXY = document.getElementById("telaXY");
+	elementCoordXY = document.getElementById("coordXY");
+
+	//pegar o canvas
+	setCanvas(document.getElementById("tela"));
+	
+	//configurar o Plano Cartesiano 
+	setCoordenadas(-13,-23, 28, 18);
+	
+	//inicializar o modelo
+	atualizarModelo();
+	
+	//desenhar os objetos da tela (do modelo para a interface)
+	desenhar();
+}
+
+
+// ------------------------------
+// MODELO
+// ------------------------------
+var circulo = []; //círculo feito de pontos em Bezier
+var linha = []; //segmento feito de pontos em Bezier
+
+function atualizarModelo() {
+	circulo = criarCirculoBezier(5, 5, 10, 20);
+	linha = criarLinhaBezier(0, -20, 20, 0, 10);
+}
+
+
+// ---------------------------------
+// CONTROLADOR: reações aos eventos da interface
+// ---------------------------------
+
+// pegar os elementos de interface que serão manipulados com frequencia
+var elementTelaXY = null,
+	elementCoordXY = null;
+	
+//opções de visualização do do gráfico
+var coordVisivel = true; //Eixos X e Y das coordenadas reais, se devem estar visíveis ou não
+	
+//possíveis estados da interface
+var movendo = 0; //0 = indica que não está movendo o sistema de coordenadas; 1 = indica que deseja mover; 2 = indica que está efetivamente arrastando o sistema de coordenadas
+
+function btnAtualizar() {
+	atualizarModelo();
+	desenhar();
+}
+
+function btnMover() {
+	var btnAtivado = document.getElementById("btnMover");
+	if (movendo==0) { //o botão não estava ativado, então ativá-lo
+		btnAtivado.classList.add("active");
+		movendo = 1;
+		canvas.style.cursor = "move";
+	}
+	else { //o botão já estava ativado, então desativá-lo
+		btnAtivado.classList.remove("active");
+		movendo = 0;
+		canvas.style.cursor = "default";
+	}    
+}
+
+function btnZoomMais() {
+	zoom(0.8);
+	desenhar();
+}
+
+function btnZoomMenos() {
+	zoom(1.25);
+	desenhar();
+}
+
+function btnEixos() {
+	coordVisivel = document.getElementById("btnEixos").checked;
+	desenhar();
+}
+
+//é preciso armazenar alguns pontos auxiliares em função da posição do mouse
+var canvasX = 0, canvasY = 0; // posição X,Y da tela (obtidas dinamicamente com o movimento do mouse sobre o canvas)
+var coordX = 0, coordY = 0; // coordenadas X,Y do plano cartesiano correspondentes às atuais posições X,Y da tela
+var xArrastando=0, yArrastando=0; //informação sobre o ponto X,Y das coordenadas relacionados ao arrasto
+
+function mouseMovement(event) {
+	//atualizar as informações da interface sobre a posição do mouse
+    xCanvas = event.offsetX;
+    yCanvas = event.offsetY;
+    elementTelaXY.innerHTML = xCanvas + ", " + yCanvas;
+	
+	xCoord = getCoordX(xCanvas);
+	yCoord = getCoordY(yCanvas);
+	elementCoordXY.innerHTML = Math.round(10*xCoord)/10 + ", " + Math.round(10*yCoord)/10; //apresentar as coordenadas com 1 casa decimal
+
+	//se estiver arrastando, é preciso deslocar o eixo de coordenadas
+	if (movendo==2) {
+		moverCoordenadas(xArrastando - xCoord, yArrastando - yCoord);
+		desenhar();
+	}
+}
+
+function canvasMouseDown(event) {
+	if (movendo==1) {
+		movendo=2; //começou a mover
+		xArrastando = xCoord;
+		yArrastando = yCoord;
+	}
+	desenhar();
+}
+
+function canvasMouseUp(event) {
+	//usuario solta o arrasto da área visível das coordenadas reais
+	if (movendo==2) {
+		movendo = 1; //está pronto para mover novamente caso seja necessário
+	}
+	desenhar();
+}
+
+
+// ------------------------------
+// VISTA: apresentação na tela dos elementos do modelo (do Modelo para a Vista)
+// ------------------------------
+
+function desenhar() {
+	//apagar o canvas com uma cor de fundo
+	ctx.fillStyle = "#ffffff";
+	ctx.fillRect(0, 0, canvas.width, canvas.height); 
+	
+	if (coordVisivel) desenharEixos();
+	
+	//apresentar o círculo do modelo
+	ctx.lineWidth = 3;
+	ctx.strokeStyle = '#000000';
+	desenharSerieBezier(circulo);
+	desenharPontosAuxiliaresCirculoBezier(5, 5, 10, 20);
+	
+	//apresentar a linha do modelo
+	ctx.lineWidth = 3;
+	ctx.strokeStyle = '#000000';
+	desenharSerieBezier(linha);
+	desenharPontosAuxiliaresLinhaBezier(0, -20, 20, 0, 10);
+}
+
+
+function desenharEixos() {
+	ctx.strokeStyle="#888";
+	ctx.lineWidth=1;
+	ctx.setLineDash([1, 3]);
+	desenharLinha(coordXMin, 0, coordXMax, 0); // Eixo X 
+	desenharLinha(0, coordYMin, 0, coordYMax); // Eixo Y
+	ctx.setLineDash([]);
+}
+
+function desenharPontosAuxiliaresCirculoBezier(x, y, raio, qtdPontos) {
+	//desenhar o círculo de base para desenhar o círculo em Bezier
+	ctx.strokeStyle = '#aaaaaa';
+	ctx.lineWidth = 1;
+	desenharCirculo(x,y,raio);
+
+	ctx.setLineDash([3, 3]);
+	ctx.strokeStyle = '#cccccc';
+	desenharCirculo(x,y,raio+raio/10); //raio/10, sendo raio=10
+	desenharCirculo(x,y,raio-raio/10); //raio/10
+	
+	//desenhar os raios sorteados
+	ctx.fillStyle = "#ff0000";
+	for (let i=0; i<circulo.length-1; i=i+3) {
+		//desenhar o raio até o ponto sorteado ao redor do arco
+		ctx.setLineDash([2, 2]);
+		ctx.strokeStyle = '#ddaaaa';
+		desenharLinha(x,y,circulo[i][0], circulo[i][1]);
+		//desenhar os pontos auxiliares de bezier
+		ctx.setLineDash([]);
+		desenharCirculo(circulo[i][0], circulo[i][1],0.1);
+		ctx.fill();
+		ctx.strokeStyle = '#ff0000';
+		desenharLinha(circulo[i][0], circulo[i][1], circulo[i+1][0], circulo[i+1][1]);
+		desenharLinha(circulo[i+3][0], circulo[i+3][1], circulo[i+2][0], circulo[i+2][1]);
+	}
+}
+
+function desenharPontosAuxiliaresLinhaBezier(x1,y1, x2,y2, qtdPontos) {
+	//desenhar a linha reta de base usada para a linha em Bezier
+	ctx.strokeStyle = '#aaaaaa';
+	ctx.lineWidth = 1;
+	desenharLinha(x1,y1, x2,y2);
+	
+	let dx = x2-x1;
+	let dy = y2-y1;
+	let distancia = Math.sqrt(dx*dx + dy*dy);
+	let angulo = Math.atan2(dy,dx); //determinada o ângulo da linha que liga os dois pontos
+	let anguloPerpendicular = angulo + Math.PI/2; //angulo perpendicular à linha entre os dois pontos
+	
+	let dDistancia = distancia/qtdPontos;
+	let dxDistancia = dx/qtdPontos;
+	let dyDistancia = dy/qtdPontos;
+	let variacao = distancia/7;
+	
+	ctx.fillStyle = "#0000ff";
+	for (i=0; i<=qtdPontos; i++) {
+		//calcular o ponto perpendicular à linha
+		let x1PontoPerpendicular = x1 + i*dxDistancia + (variacao/2)*Math.cos(anguloPerpendicular);
+		let y1PontoPerpendicular = y1 + i*dyDistancia + (variacao/2)*Math.sin(anguloPerpendicular);
+		let x2PontoPerpendicular = x1PontoPerpendicular-(variacao)*Math.cos(anguloPerpendicular);
+		let y2PontoPerpendicular = y1PontoPerpendicular-(variacao)*Math.sin(anguloPerpendicular);
+
+		//desenhar a linha perpendicular do espaço de variação
+		ctx.setLineDash([3, 3]);
+		ctx.strokeStyle = '#cccccc';
+		desenharLinha(x1PontoPerpendicular,y1PontoPerpendicular, x2PontoPerpendicular, y2PontoPerpendicular, );
+
+		//desenhar o ponto sorteado dentro da linha perpendicular do espaço de variação
+		ctx.setLineDash([2, 2]);
+		ctx.strokeStyle = '#0000ff';
+		desenharLinha(x1 + i*dxDistancia, y1 + i*dyDistancia, linha[i*3][0], linha[i*3][1] );
+		desenharCirculo(linha[i*3][0], linha[i*3][1], 0.1);
+		ctx.fill();
+		
+		//desenhar os pontos auxiliares da curva de bezier
+		if (i<qtdPontos) { //não desenhar a última
+			ctx.setLineDash([]);
+			desenharLinha(linha[i*3][0], linha[i*3][1], linha[i*3+1][0], linha[i*3+1][1]);
+			desenharLinha(linha[i*3+2][0], linha[i*3+2][1], linha[i*3+3][0], linha[i*3+3][1]);
+		}
+	}
+}
+
+
+</script>
+
+</head>
+
+<body onload="iniciar()">
+	<h1>Curvas de Bézier</h1>
+	<p id="editor">
+	<button id="btnAtualizar" type="button" class="btn btn-default btn-margem" title="Atualizar Modelo" onclick="btnAtualizar()">Atualizar Modelo</button>
+	<button id="btnMover" type="button" class="btn btn-icone grupoExclusivo" title="Mover" onclick="btnMover()"></button>
+	<button id="btnZoomMais" type="button" class="btn btn-icone btn-default" title="Zoom Mais" onclick="btnZoomMais()"></button>
+	<button id="btnZoomMenos" type="button" class="btn btn-icone btn-default" title="Zoom Menos" onclick="btnZoomMenos()"></button>&nbsp;
+	<input id="btnEixos" type="checkbox" checked="true" onchange="btnEixos()"><label for="btnEixos">Coord:</label> <span id="coordXY">0,0</span>
+	Tela: <span id="telaXY">0,0</span>
+	<br>
+	<canvas id="tela" width="1000px" height="1000px" style="border:1px solid black;" onMouseMove="mouseMovement(event)" onMousedown="canvasMouseDown()" onMouseUp="canvasMouseUp()"></canvas>
+	</p>
+</body>
+</html>

@@ -1,0 +1,74 @@
+* {
+	font-family: Arial, Verdanda, sans-serif;
+	vertical-align: middle;
+}
+
+#editor {
+	font-size: small;
+}
+	
+#telaXY, #coordXY {
+	display: inline-block;
+	color: #BBB;
+}
+#telaXY {
+	width: 100px;
+}
+
+#coordXY {
+	width: 100px;
+}
+
+.btn {
+	display: inline-block;
+	padding: 5px;
+	border: 1px solid transparent;
+	outline: 0px auto -webkit-focus-ring-color;
+    outline-offset: -1px;
+	color: #333;
+    background-color: #f4f4f4;
+    border-color: #ccc;
+	border-radius: 3px;
+	margin: 5px 0;
+	background-position: center center;
+	background-repeat: no-repeat;
+}
+
+.btn-icone {
+	width: 25px;
+	height: 25px;
+}
+
+.btn-default:hover {
+    color: #433;
+    background-color: #e0dddd;
+    border-color: #a09999;
+}
+
+.btn-default:active {
+    background-color: #ddbbbb;
+    border-color: #bb9999;
+}
+
+.btn-margem {
+    margin-right:15px;
+}
+
+.active {
+	color: #333;
+    background-color: #b4b4b4;
+    border-color: #8c8c8c;
+}
+
+
+#btnMover {
+	background-image: url("imover.png");
+}
+
+#btnZoomMais {
+	background-image: url("izoommais.png");
+}
+
+#btnZoomMenos {
+	background-image: url("izoommenos.png");
+}
